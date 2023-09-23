@@ -1,0 +1,45 @@
+import { connect } from '@/db/dbConfig';
+import User from '@/models/userModel';
+import { NextRequest, NextResponse } from 'next/server';
+import bcryptjs from 'bcryptjs';
+
+connect();
+
+// you can create different functions for different http methods
+export async function POST(request: NextRequest) {
+  try {
+    const reqBody = await request.json();
+    const { username, email, password } = reqBody;
+    console.log(reqBody);
+
+    // check if there is user
+    const user = await User.findOne({ email });
+    if (user) {
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 400 }
+      );
+    }
+
+    // hash password
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(password, salt);
+
+    // create a new user and save it
+    const newUser = new User({
+      username,
+      email,
+      password: hashedPassword,
+    });
+    const userSaved = await newUser.save();
+    console.log(userSaved);
+
+    return NextResponse.json({
+      message: 'User Created Successfully',
+      success: true,
+      userSaved,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
